@@ -43,7 +43,7 @@ Window:Tag({Title = "V.1.1",Icon = "solar:info-square-bold-duotone",Color = Colo
 local MainSection = Window:Section({Title = "Main",Opened = true,})
 
 -- Home Tab
-local Tab = Window:Tab({Title = "Home",Icon = "solar:home-angle-2-bold-duotone",Locked = false,})
+local HomeTab = Window:Tab({Title = "Home",Icon = "solar:home-angle-2-bold-duotone",Locked = false,})
 local player = game.Players.LocalPlayer
 local userId = player.UserId
 
