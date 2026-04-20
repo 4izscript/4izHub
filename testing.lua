@@ -1,259 +1,143 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- Variables
-local Spying = true
-local AutoCopy = false
-local Blacklist = {}
-local LogCount = 0
-
--- Utility: Get Path
-local function GetPath(Instance)
-    local Success, Result = pcall(function()
-        local Obj = Instance
-        local Path = {}
-        local Service = nil
-        
-        while Obj ~= nil and Obj ~= game do
-            if Obj.Parent == game then
-                Service = Obj
-                break
-            end
-            
-            local Name = Obj.Name
-            if Name:find("^[%a_][%w_]*$") then
-                table.insert(Path, 1, Name)
-            else
-                table.insert(Path, 1, '["' .. Name:gsub('"', '\\"') .. '"]')
-            end
-            
-            Obj = Obj.Parent
-        end
-        
-        local Res = ""
-        if Service then
-            Res = 'game:GetService("' .. Service.ClassName .. '")'
-        else
-            Res = "game"
-        end
-        
-        for i, v in ipairs(Path) do
-            if v:sub(1, 1) == "[" then
-                Res = Res .. v
-            else
-                Res = Res .. "." .. v
-            end
-        end
-        
-        return Res
-    end)
+-- 1. Register Theme FIRST
+WindUI:AddTheme({
+    Name = "Purple Night", 
     
-    return Success and Result or "ERROR_GETTING_PATH"
-end
+    -- Core
+    Accent = WindUI:Gradient({                                                      
+        ["0"] = { Color = Color3.fromHex("#a78bfa"), Transparency = 0 },            
+        ["100"] = { Color = Color3.fromHex("#7c3aed"), Transparency = 0 },        
+    }, {                                                                            
+        Rotation = 45,                                                               
+    }),
+    Background = Color3.fromHex("#09090b"),
+    BackgroundTransparency = 0.05,
+    Outline = Color3.fromHex("#1e1b4b"),
+    Text = Color3.fromHex("#fafafa"),
+    Placeholder = Color3.fromHex("#71717a"),
+    Button = Color3.fromHex("#1e1e2e"),
+    Icon = Color3.fromHex("#a78bfa"),
+    Hover = Color3.fromHex("#ffffff"),
+    
+    -- Window
+    WindowBackground = Color3.fromHex("#09090b"),
+    WindowShadow = Color3.fromHex("#000000"),
+    WindowTopbarButtonIcon = Color3.fromHex("#d4d4d8"),
+    WindowTopbarTitle = Color3.fromHex("#fafafa"),
+    WindowTopbarAuthor = Color3.fromHex("#a1a1aa"),
+    WindowTopbarIcon = Color3.fromHex("#fafafa"),
+    
+    -- Tabs & Elements
+    TabBackground = Color3.fromHex("#fafafa"),
+    TabTitle = Color3.fromHex("#fafafa"),
+    TabIcon = Color3.fromHex("#a1a1aa"),
+    
+    ElementBackground = Color3.fromHex("#18181b"),
+    ElementTitle = Color3.fromHex("#fafafa"),
+    ElementDesc = Color3.fromHex("#a1a1aa"),
+    ElementIcon = Color3.fromHex("#a78bfa"),
+    
+    -- Controls
+    Toggle = Color3.fromHex("#27272a"),
+    ToggleBar = Color3.fromHex("#fafafa"),
+    
+    Checkbox = Color3.fromHex("#27272a"),
+    CheckboxIcon = Color3.fromHex("#fafafa"),
+    
+    Slider = Color3.fromHex("#27272a"),
+    SliderThumb = Color3.fromHex("#fafafa"),
+    
+    -- Dialogs & Popups
+    DialogBackground = Color3.fromHex("#09090b"),
+    DialogTitle = Color3.fromHex("#fafafa"),
+    DialogContent = Color3.fromHex("#d4d4d8"),
+    DialogIcon = Color3.fromHex("#a78bfa"),
+})
 
--- Utility: Serialize to Lua
-local function Serialize(Value)
-    local Type = typeof(Value)
-    if Type == "string" then
-        return '"' .. Value .. '"'
-    elseif Type == "number" or Type == "boolean" then
-        return tostring(Value)
-    elseif Type == "Instance" then
-        return GetPath(Value)
-    elseif Type == "Vector3" then
-        return "Vector3.new(" .. tostring(Value) .. ")"
-    elseif Type == "Vector2" then
-        return "Vector2.new(" .. tostring(Value) .. ")"
-    elseif Type == "CFrame" then
-        return "CFrame.new(" .. tostring(Value) .. ")"
-    elseif Type == "Color3" then
-        return "Color3.new(" .. tostring(Value) .. ")"
-    elseif Type == "UDim2" then
-        return "UDim2.new(" .. tostring(Value):gsub("[{}]", "") .. ")"
-    elseif Type == "EnumItem" then
-        return tostring(Value)
-    elseif Type == "table" then
-        local Str = "{"
-        local Count = 0
-        for i, v in pairs(Value) do
-            Count = Count + 1
-            local Key = type(i) == "number" and "" or Serialize(i) .. " = "
-            Str = Str .. Key .. Serialize(v) .. ", "
-        end
-        if Count > 0 then
-            return Str:sub(1, #Str - 2) .. "}"
-        end
-        return "{}"
-    else
-        return '"' .. tostring(Value) .. '"'
-    end
-end
-
--- UI Initialization
+-- 2. Create Window (Theme will be set here)
 local Window = WindUI:CreateWindow({
-    Title = "Remote Spy",
-    Icon = "eye",
+    Title = "Purple Hub",
+    Icon = "sparkles",
     Author = "by Antigravity",
-    Folder = "WindUIRemoteSpy",
+    Folder = "PurpleHubConfig",
     Size = UDim2.fromOffset(580, 460),
     Transparent = true,
-    Theme = "Dark",
+    Theme = "Purple Night", -- This applies the theme upon creation
 })
 
-local LogTab = Window:Tab({
-    Title = "Logs",
-    Icon = "scroll",
+-- Home Tab
+local HomeTab = Window:Tab({
+    Title = "Home",
+    Icon = "home",
 })
 
-local DetailsTab = Window:Tab({
-    Title = "Details",
-    Icon = "info",
+local ChangelogSection = HomeTab:Section({
+    Title = "Changelog",
 })
 
+ChangelogSection:Paragraph({
+    Title = "Version 1.0.0",
+    Desc = "- Initial Release\n- Added Purple Night Theme\n- Added Auto Farm system\n- Added Setting system",
+})
+
+-- Auto Farm Tab
+local FarmTab = Window:Tab({
+    Title = "Auto Farm",
+    Icon = "swords",
+})
+
+local MainFarmSection = FarmTab:Section({
+    Title = "Main Farming",
+})
+
+MainFarmSection:Toggle({
+    Title = "Auto Farm Level",
+    Desc = "Automatically farms levels for you",
+    Value = false,
+    Callback = function(state)
+        print("Auto Farm Level: " .. tostring(state))
+    end
+})
+
+-- Settings Tab
 local SettingsTab = Window:Tab({
     Title = "Settings",
     Icon = "settings",
 })
 
-local LogSection = LogTab:Section({
-    Title = "Captured Remotes",
+local UISettingsSection = SettingsTab:Section({
+    Title = "UI Settings",
 })
 
-local DetailsSection = DetailsTab:Section({
-    Title = "Remote Replicator",
-})
-
-local CurrentScript = ""
-local CodeBlock = DetailsSection:Code({
-    Title = "Generated Script",
-    Code = "-- Select a remote to view script",
-})
-
-local CopyButton = DetailsSection:Button({
-    Title = "Copy Script",
-    Desc = "Copy the replication script to clipboard",
-    Icon = "copy",
-    Callback = function()
-        if CurrentScript ~= "" then
-            setclipboard(CurrentScript)
-            WindUI:Notify({
-                Title = "Success",
-                Content = "Script copied to clipboard!",
-                Duration = 2
-            })
-        end
+UISettingsSection:Dropdown({
+    Title = "Change Theme",
+    Desc = "Select a theme to apply",
+    Values = WindUI:GetThemes(),
+    Value = WindUI:GetCurrentTheme(), -- Use string, not table, if Multi is false
+    Callback = function(theme)
+         WindUI:SetTheme(theme)
     end
 })
 
--- Functions for Logs
-local function AddLog(Remote, Method, Args, ArgCount)
-    local Success, Error = pcall(function()
-        if not Spying then return end
-        
-        -- Capture basic info immediately
-        local RemoteName = tostring(Remote.Name)
-        local RemoteClass = tostring(Remote.ClassName)
-        local RemotePath = GetPath(Remote)
-        
-        if table.find(Blacklist, RemoteName) or table.find(Blacklist, RemoteClass) then return end
-        
-        LogCount = LogCount + 1
-        local Time = os.date("%X")
-        
-        -- Generate Script
-        local ArgStrings = {}
-        for i = 1, ArgCount do
-            table.insert(ArgStrings, Serialize(Args[i]))
-        end
-        local ArgString = table.concat(ArgStrings, ", ")
-        
-        local ScriptTemplate = string.format([[-- Remote Call Replicator
--- Path: %s
--- Method: %s
-
-local Remote = %s
-Remote:%s(%s)]], RemotePath, Method, RemotePath, Method, ArgString)
-
-        if AutoCopy then
-            setclipboard(ScriptTemplate)
-            WindUI:Notify({
-                Title = "Notification",
-                Content = "Copied script for: " .. RemoteName,
-                Duration = 2
-            })
-        end
-
-        -- Create Log Entry
-        LogSection:Button({
-            Title = "[" .. Time .. "] " .. RemoteName,
-            Desc = Method .. " - " .. ArgCount .. " arguments",
-            Callback = function()
-                CurrentScript = ScriptTemplate
-                CodeBlock:SetCode(ScriptTemplate)
-                DetailsTab:Select()
-            end
-        })
-    end)
-    
-    if not Success then
-        warn("[Remote Spy Error]: " .. tostring(Error))
-    end
-end
-
--- Settings
-SettingsTab:Toggle({
-    Title = "Spy Enabled",
-    Desc = "Toggle remote interception",
-    Value = true,
-    Callback = function(val) Spying = val end
-})
-
-SettingsTab:Toggle({
-    Title = "Auto Copy",
-    Desc = "Automatically copy script to clipboard on capture",
-    Value = false,
-    Callback = function(val) AutoCopy = val end
-})
-
-SettingsTab:Button({
-    Title = "Clear Logs",
-    Desc = "Remove all captured logs from the UI",
-    Callback = function()
-        WindUI:Notify({
-            Title = "Action",
-            Content = "Clearing logs... (UI Refresh needed)",
-            Duration = 3
-        })
+UISettingsSection:Toggle({
+    Title = "Transparent Mode",
+    Value = WindUI:GetTransparency(), -- Corrected: Use WindUI:GetTransparency()
+    Callback = function(val)
+        Window:ToggleTransparency(val)
     end
 })
 
-SettingsTab:Input({
-    Title = "Blacklist",
-    Desc = "Remote names/classes to ignore (comma separated)",
-    Placeholder = "ExampleRemote, UnreliableRemoteEvent",
-    Callback = function(txt)
-        Blacklist = {}
-        for s in txt:gmatch("([^, ]+)") do
-            table.insert(Blacklist, s)
-        end
+UISettingsSection:Keybind({
+    Title = "Toggle UI",
+    Value = "LeftShift",
+    Callback = function(key)
+        Window:SetToggleKey(Enum.KeyCode[key])
     end
 })
 
--- Hooking Logic
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local Method = getnamecallmethod()
-    local Args = {...}
-    local ArgCount = select("#", ...)
-    
-    if (Method == "FireServer" or Method == "InvokeServer") and Spying then
-        task.spawn(AddLog, self, Method, Args, ArgCount)
-    end
-    
-    return oldNamecall(self, ...)
-end)
-
-WindUI:Notify({
-    Title = "Remote Spy Loaded",
-    Content = "Wind UI Remote Spy is now active.",
-    Duration = 5
+Window:EditOpenButton({
+    Title = "Open Hub",
+    Icon = "layout",
+    Enabled = true,
 })
