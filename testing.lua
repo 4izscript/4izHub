@@ -8,42 +8,46 @@ local LogCount = 0
 
 -- Utility: Get Path
 local function GetPath(Instance)
-    local Obj = Instance
-    local Path = {}
-    local Service = nil
-    
-    while Obj ~= nil and Obj ~= game do
-        if Obj.Parent == game then
-            Service = Obj
-            break
+    local Success, Result = pcall(function()
+        local Obj = Instance
+        local Path = {}
+        local Service = nil
+        
+        while Obj ~= nil and Obj ~= game do
+            if Obj.Parent == game then
+                Service = Obj
+                break
+            end
+            
+            local Name = Obj.Name
+            if Name:find("^[%a_][%w_]*$") then
+                table.insert(Path, 1, Name)
+            else
+                table.insert(Path, 1, '["' .. Name:gsub('"', '\\"') .. '"]')
+            end
+            
+            Obj = Obj.Parent
         end
         
-        local Name = Obj.Name
-        if Name:find("^[%a_][%w_]*$") then
-            table.insert(Path, 1, Name)
+        local Res = ""
+        if Service then
+            Res = 'game:GetService("' .. Service.ClassName .. '")'
         else
-            table.insert(Path, 1, '["' .. Name:gsub('"', '\\"') .. '"]')
+            Res = "game"
         end
         
-        Obj = Obj.Parent
-    end
-    
-    local Result = ""
-    if Service then
-        Result = 'game:GetService("' .. Service.ClassName .. '")'
-    else
-        Result = "game"
-    end
-    
-    for i, v in ipairs(Path) do
-        if v:sub(1, 1) == "[" then
-            Result = Result .. v
-        else
-            Result = Result .. "." .. v
+        for i, v in ipairs(Path) do
+            if v:sub(1, 1) == "[" then
+                Res = Res .. v
+            else
+                Res = Res .. "." .. v
+            end
         end
-    end
+        
+        return Res
+    end)
     
-    return Result
+    return Success and Result or "ERROR_GETTING_PATH"
 end
 
 -- Utility: Serialize to Lua
@@ -69,11 +73,16 @@ local function Serialize(Value)
         return tostring(Value)
     elseif Type == "table" then
         local Str = "{"
+        local Count = 0
         for i, v in pairs(Value) do
+            Count = Count + 1
             local Key = type(i) == "number" and "" or Serialize(i) .. " = "
             Str = Str .. Key .. Serialize(v) .. ", "
         end
-        return Str:sub(1, #Str - 2) .. "}"
+        if Count > 0 then
+            return Str:sub(1, #Str - 2) .. "}"
+        end
+        return "{}"
     else
         return '"' .. tostring(Value) .. '"'
     end
@@ -136,48 +145,58 @@ local CopyButton = DetailsSection:Button({
 })
 
 -- Functions for Logs
-local function AddLog(Remote, Method, Args)
-    if not Spying then return end
-    if table.find(Blacklist, Remote.Name) or table.find(Blacklist, Remote.ClassName) then return end
-    
-    LogCount = LogCount + 1
-    local RemotePath = GetPath(Remote)
-    local Time = os.date("%X")
-    
-    -- Generate Script
-    local ArgStrings = {}
-    for i, v in ipairs(Args) do
-        table.insert(ArgStrings, Serialize(v))
-    end
-    local ArgString = table.concat(ArgStrings, ", ")
-    
-    local ScriptTemplate = string.format([[-- Remote Call Replicator
+local function AddLog(Remote, Method, Args, ArgCount)
+    local Success, Error = pcall(function()
+        if not Spying then return end
+        
+        -- Capture basic info immediately
+        local RemoteName = tostring(Remote.Name)
+        local RemoteClass = tostring(Remote.ClassName)
+        local RemotePath = GetPath(Remote)
+        
+        if table.find(Blacklist, RemoteName) or table.find(Blacklist, RemoteClass) then return end
+        
+        LogCount = LogCount + 1
+        local Time = os.date("%X")
+        
+        -- Generate Script
+        local ArgStrings = {}
+        for i = 1, ArgCount do
+            table.insert(ArgStrings, Serialize(Args[i]))
+        end
+        local ArgString = table.concat(ArgStrings, ", ")
+        
+        local ScriptTemplate = string.format([[-- Remote Call Replicator
 -- Path: %s
 -- Method: %s
 
 local Remote = %s
 Remote:%s(%s)]], RemotePath, Method, RemotePath, Method, ArgString)
 
-    if AutoCopy then
-        setclipboard(ScriptTemplate)
-        WindUI:Notify({
-            Title = "Notification",
-            Content = "Copied script for: " .. Remote.Name,
-            Duration = 2
-        })
-    end
-
-    -- Create Log Entry
-    local LogButton
-    LogButton = LogSection:Button({
-        Title = "[" .. Time .. "] " .. Remote.Name,
-        Desc = Method .. " - " .. #Args .. " arguments",
-        Callback = function()
-            CurrentScript = ScriptTemplate
-            CodeBlock:SetCode(ScriptTemplate)
-            DetailsTab:Select()
+        if AutoCopy then
+            setclipboard(ScriptTemplate)
+            WindUI:Notify({
+                Title = "Notification",
+                Content = "Copied script for: " .. RemoteName,
+                Duration = 2
+            })
         end
-    })
+
+        -- Create Log Entry
+        LogSection:Button({
+            Title = "[" .. Time .. "] " .. RemoteName,
+            Desc = Method .. " - " .. ArgCount .. " arguments",
+            Callback = function()
+                CurrentScript = ScriptTemplate
+                CodeBlock:SetCode(ScriptTemplate)
+                DetailsTab:Select()
+            end
+        })
+    end)
+    
+    if not Success then
+        warn("[Remote Spy Error]: " .. tostring(Error))
+    end
 end
 
 -- Settings
@@ -199,10 +218,6 @@ SettingsTab:Button({
     Title = "Clear Logs",
     Desc = "Remove all captured logs from the UI",
     Callback = function()
-        -- In Wind UI, we'd need to clear the section. 
-        -- If individual buttons can't be cleared easily, we might need a workaround.
-        -- Assuming Section:Destroy() or similar might exist, or just refreshing.
-        -- For now, let's assume we can clear by destroying elements or provide a notification.
         WindUI:Notify({
             Title = "Action",
             Content = "Clearing logs... (UI Refresh needed)",
@@ -228,9 +243,10 @@ local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local Method = getnamecallmethod()
     local Args = {...}
+    local ArgCount = select("#", ...)
     
     if (Method == "FireServer" or Method == "InvokeServer") and Spying then
-        task.spawn(AddLog, self, Method, Args)
+        task.spawn(AddLog, self, Method, Args, ArgCount)
     end
     
     return oldNamecall(self, ...)
